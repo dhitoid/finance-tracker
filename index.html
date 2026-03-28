@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Tracker</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Inter',sans-serif;
+}
+
+body{
+  background:#0f0f0f;
+  color:#fff;
+}
+
+.app{
+  max-width:420px;
+  margin:auto;
+  padding:20px;
+}
+
+header{
+  margin-bottom:20px;
+}
+
+header h1{
+  font-size:28px;
+}
+
+header p{
+  opacity:0.6;
+}
+
+.card{
+  background:rgba(255,255,255,0.05);
+  backdrop-filter:blur(15px);
+  padding:20px;
+  border-radius:20px;
+  margin-bottom:15px;
+}
+
+.balance h1{
+  font-size:32px;
+  margin-top:10px;
+}
+
+.summary{
+  display:flex;
+  justify-content:space-between;
+}
+
+.summary div{
+  width:48%;
+}
+
+.transactions ul{
+  list-style:none;
+  margin-top:10px;
+}
+
+.transactions li{
+  background:rgba(255,255,255,0.05);
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.income{
+  border-right:4px solid #00ffae;
+}
+
+.expense{
+  border-right:4px solid #ff4d4d;
+}
+
+.add-btn{
+  position:fixed;
+  bottom:30px;
+  right:30px;
+  width:60px;
+  height:60px;
+  border:none;
+  border-radius:50%;
+  font-size:28px;
+  background:#fff;
+  color:#000;
+  cursor:pointer;
+}
+
+.modal{
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+.modal-content{
+  background:#1c1c1e;
+  padding:20px;
+  border-radius:20px;
+  width:90%;
+}
+
+.modal-content input{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border:none;
+  border-radius:10px;
+}
+
+.modal-content button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#fff;
+  color:#000;
+}
+</style>
+
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <h1>My Finance</h1>
+    <p id="date"></p>
+  </header>
+
+  <div class="card balance">
+    <h2>Saldo</h2>
+    <h1 id="balance">Rp 0</h1>
+  </div>
+
+  <div class="card summary">
+    <div>
+      <p>Pemasukan</p>
+      <h3 id="income">Rp 0</h3>
+    </div>
+    <div>
+      <p>Pengeluaran</p>
+      <h3 id="expense">Rp 0</h3>
+    </div>
+  </div>
+
+  <div class="transactions">
+    <h2>Transaksi</h2>
+    <ul id="list"></ul>
+  </div>
+
+  <button class="add-btn" onclick="openModal()">＋</button>
+
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <h2>Tambah Transaksi</h2>
+    <input type="text" id="text" placeholder="Deskripsi">
+    <input type="number" id="amount" placeholder="Jumlah (gunakan - untuk pengeluaran)">
+    <button onclick="addTransaction()">Simpan</button>
+  </div>
+</div>
+
+<script>
+const balanceEl = document.getElementById('balance');
+const incomeEl = document.getElementById('income');
+const expenseEl = document.getElementById('expense');
+const list = document.getElementById('list');
+
+let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+// Format Rupiah
+function formatRupiah(num){
+  return 'Rp ' + num.toLocaleString('id-ID');
+}
+
+// Update UI
+function updateUI(){
+  list.innerHTML = '';
+
+  let income = 0;
+  let expense = 0;
+
+  transactions.forEach((t)=>{
+    const li = document.createElement('li');
+    li.classList.add(t.amount > 0 ? 'income' : 'expense');
+
+    li.innerHTML = `
+      ${t.text}
+      <span>${formatRupiah(t.amount)}</span>
+    `;
+
+    list.appendChild(li);
+
+    if(t.amount > 0) income += t.amount;
+    else expense += t.amount;
+  });
+
+  balanceEl.innerText = formatRupiah(income + expense);
+  incomeEl.innerText = formatRupiah(income);
+  expenseEl.innerText = formatRupiah(Math.abs(expense));
+
+  localStorage.setItem('transactions', JSON.stringify(transactions));
+}
+
+// Tambah transaksi
+function addTransaction(){
+  const text = document.getElementById('text').value;
+  const amount = +document.getElementById('amount').value;
+
+  if(!text || !amount) return alert('Isi semua!');
+
+  transactions.push({text, amount});
+
+  closeModal();
+  updateUI();
+
+  document.getElementById('text').value = '';
+  document.getElementById('amount').value = '';
+}
+
+// Modal
+function openModal(){
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal(){
+  document.getElementById('modal').style.display = 'none';
+}
+
+// Klik luar modal = close
+window.onclick = function(e){
+  const modal = document.getElementById('modal');
+  if(e.target == modal){
+    closeModal();
+  }
+}
+
+// Auto reset bulanan
+function checkMonthlyReset(){
+  const lastMonth = localStorage.getItem('month');
+  const currentMonth = new Date().getMonth();
+
+  if(lastMonth == null){
+    localStorage.setItem('month', currentMonth);
+  } else if(lastMonth != currentMonth){
+    transactions = [];
+    localStorage.setItem('month', currentMonth);
+  }
+}
+
+// Date
+document.getElementById('date').innerText =
+  new Date().toLocaleDateString('id-ID', {
+    weekday:'long',
+    day:'numeric',
+    month:'long',
+    year:'numeric'
+  });
+
+checkMonthlyReset();
+updateUI();
+</script>
+
+</body>
+</html>
